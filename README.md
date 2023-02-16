@@ -5,7 +5,7 @@ Can either assign owner permissions to all videos hosted by an individual or a s
 
 ## Input File
 The input json file should be named *StreamAutomation-Input.json* and should look like the one of the following. 
-Keep in mind that the authorization token will be much longer than presented below.
+Keep in mind that the authorization token will be much longer than presented below and top is capped at 100.
   
   For all videos by a specified owner:
   ```
