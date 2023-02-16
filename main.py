@@ -110,22 +110,9 @@ def create_payload(json_dict: dict, user_id: str):
     return json.dumps(json_dict)
 
 
-def run(current_owner: str, new_owner: str, top: int, skip: int, auth: str):
-    # top is capped at 100 by the webserver
-    if top > 100:
-        top = 100
-    # top can't be less than 1
-    elif top < 0:
-        top = 1
-
-    # can't skip a negative amount
-    if skip < 0:
-        skip = 0
-
+def run(video_ids, new_owner: str, auth: str):
     logger.info("Running Main\n")
 
-    # Get video IDs
-    video_ids: List[str] = get_video_ids(creator_id=current_owner, top=top, skip=skip, auth=auth)
     print(f"Video IDs selected: {video_ids}")
     logger.info(f"Video IDs selected: {video_ids}")
 
@@ -161,12 +148,31 @@ def main():
         with open("StreamAutomation-Input.json", 'r') as file:
             input_values: dict = json.load(file)
 
+        all_videos: bool = input_values["all"]
         authorization: str = input_values["authorization"]
-        owner_id: str = input_values["previous_owner_id"]
         new_owner_id: str = input_values["new_owner_id"]
-        # Use int() here to confirm the values are ints - if they're not then ValueError is raised - which is catched
-        top: int = int(input_values["top"])
-        skip: int = int(input_values["skip"])
+
+        if all_videos:
+            owner_id: str = input_values["previous_owner_id"]
+            # Use int() here to confirm the values are ints - if they're not then ValueError is raised which is caught
+            top: int = int(input_values["top"])
+            skip: int = int(input_values["skip"])
+
+            # top is capped at 100 by the webserver
+            if top > 100:
+                top = 100
+            # top can't be less than 1
+            elif top < 0:
+                top = 1
+
+            # can't skip a negative amount
+            if skip < 0:
+                skip = 0
+
+            video_ids: List[str] = get_video_ids(creator_id=owner_id, top=top, skip=skip, auth=authorization)
+        else:
+            video_ids: List[str] = input_values["video_ids"]
+
     except FileNotFoundError as e:
         print(f"ERROR - {e} - Input file ('StreamAutomation-Input.json') not found")
         logger.error(f"{e} - Input file ('StreamAutomation-Input.json') not found")
@@ -177,15 +183,14 @@ def main():
         return
 
     try:
-        run(auth=authorization, current_owner=owner_id, new_owner=new_owner_id, top=top, skip=skip)
+        run(auth=authorization,  new_owner=new_owner_id, video_ids=video_ids)
     except requests.exceptions.JSONDecodeError as e:
         print(f"ERROR - {e} - this usually indicates that the authorization token is incorrect / outdated")
         logger.error(f"{e} - authorization token is likely incorrect / outdated")
 
 
 if __name__ == '__main__':
-    # todo StreamAutomation-Output.log
-    logging.basicConfig(filename="test.log",
+    logging.basicConfig(filename="StreamAutomation-Output.log",
                         format='%(name)s :: %(levelname)s :: %(asctime)s :: %(message)s',
                         filemode='a')
     logger = logging.getLogger()
