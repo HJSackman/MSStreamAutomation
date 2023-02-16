@@ -5,7 +5,7 @@ import logging
 from tqdm import tqdm
 
 
-def get_video_ids(creator_id: str, top: int, skip: int, auth: str) -> List[str]:
+def get_video_ids_from_creator(creator_id: str, top: int, skip: int, auth: str) -> List[str]:
     """Get a list of IDs for videos created by a given user
 
     :param creator_id: Given user id
@@ -32,14 +32,41 @@ def get_video_ids(creator_id: str, top: int, skip: int, auth: str) -> List[str]:
     }
     get_videos_url = f"https://euno-1.api.microsoftstream.com/api/videos?$top={top}&$skip={skip}&$expand=creator,events&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)%20and%20creator%2Fid%20eq%20%{creator_id}%27&adminmode=true&api-version=1.4-private"
 
-    data = f"$top={top}&$skip={skip}&$expand=creator,events&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)%20and%20creator%2Fid%20eq%20%{creator_id}%27&adminmode=true&api-version=1.4-private"
+    payload = f"$top={top}&$skip={skip}&$expand=creator,events&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)%20and%20creator%2Fid%20eq%20%{creator_id}%27&adminmode=true&api-version=1.4-private"
 
-    response = requests.get(get_videos_url, headers=get_videos_headers, data=data)
+    response = requests.get(get_videos_url, headers=get_videos_headers, data=payload)
     json_ = response.json()["value"]
 
     ids = [item['id'] for item in json_]
     # for item in json_:
     #    print(item['id'])
+
+    return ids
+
+
+def get_video_ids_from_group(group_id: str, top: int, skip: int, auth: str) -> List[str]:
+    url = f"ttps://euno-1.api.microsoftstream.com/api/groups/{group_id}/videos?$top={top}&$skip={skip}&$orderby=metrics%2FtrendingScore%20desc&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)&adminmode=true&api-version=1.4-private"
+    headers = {
+        "accept": "application/json, text/plain, */*",
+        "accept-language": "en",
+        "authorization": auth,
+        "sec-ch-ua": "\"Not_A Brand\";v=\"99\", \"Google Chrome\";v=\"109\", \"Chromium\";v=\"109\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\"",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "x-ms-client-request-id": "191fbd57-7d35-7dce-2a63-ed7306607a92",
+        "x-ms-client-session-id": "8c68d6a1-6d24-4294-bfea-324e8c3ca4e2",
+        "x-ms-correlation-request-id": "undefined-9466-e8ca-993d-2efa02c0f285",
+        "Referer": "https://web.microsoftstream.com/",
+        "Referrer-Policy": "strict-origin-when-cross-origin"
+    }
+    payload = f"$top={top}&$skip={skip}&$orderby=metrics%2FtrendingScore%20desc&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)&adminmode=true&api-version=1.4-private"
+    response = requests.get(url, headers=headers, data=payload)
+
+    json_ = response.json()["value"]
+    ids = [item["id"] for item in json_]
 
     return ids
 
@@ -92,7 +119,7 @@ def update_config(vid_id, payload, auth):
     return response
 
 
-def create_payload(json_dict: dict, user_id: str):
+def create_payload_for_perms(json_dict: dict, user_id: str):
     """Creates a JSON payload that will grant owner permissions
 
     :param json_dict: JSON like dict that contains the payload from the get request
@@ -125,7 +152,7 @@ def run(video_ids, new_owner: str, auth: str):
             logger.info(f"Current config: {current_config}")
 
             # Create a payload to add new owner
-            payload = create_payload(current_config, new_owner)
+            payload = create_payload_for_perms(current_config, new_owner)
             logger.info(f"Payload: {payload}")
 
             # Send payload to Stream
@@ -148,12 +175,13 @@ def main():
         with open("StreamAutomation-Input.json", 'r') as file:
             input_values: dict = json.load(file)
 
-        all_videos: bool = input_values["all"]
+        processing_type: str = input_values["processing"]
         authorization: str = input_values["authorization"]
         new_owner_id: str = input_values["new_owner_id"]
 
-        if all_videos:
-            owner_id: str = input_values["previous_owner_id"]
+        # If the videos are processed based on who created them or a group that can view them
+        # Both use top and skip
+        if processing_type in "user" or "group":
             # Use int() here to confirm the values are ints - if they're not then ValueError is raised which is caught
             top: int = int(input_values["top"])
             skip: int = int(input_values["skip"])
@@ -169,9 +197,24 @@ def main():
             if skip < 0:
                 skip = 0
 
-            video_ids: List[str] = get_video_ids(creator_id=owner_id, top=top, skip=skip, auth=authorization)
-        else:
+            if processing_type == "user":
+                owner_id: str = input_values["previous_owner_id"]
+                video_ids: List[str] = get_video_ids_from_creator(creator_id=owner_id,
+                                                                  top=top,
+                                                                  skip=skip,
+                                                                  auth=authorization)
+            else:
+                group_id: str = input_values["group_id"]
+                video_ids: List[str] = get_video_ids_from_group(group_id=group_id,
+                                                                top=top,
+                                                                skip=skip,
+                                                                auth=authorization)
+        elif processing_type == "videos":
             video_ids: List[str] = input_values["video_ids"]
+        else:
+            logging.error(f'ERROR - Invalid processing type "{processing_type}" - should be "user", "group" or "videos"')
+            print(f'ERROR - Invalid processing type "{processing_type}" - should be "user", "group" or "videos"')
+            return
 
     except FileNotFoundError as e:
         print(f"ERROR - {e} - Input file ('StreamAutomation-Input.json') not found")
@@ -209,6 +252,4 @@ if __name__ == '__main__':
     # payload = create_payload(current_config, '89beb98a-69a5-48b0-a938-871bd9e8017b')
     # response = update_config('d35fe72c-f7c3-47ba-abe0-e23dfef4864d', payload)
 
-    #main()
-
-
+    # main()
