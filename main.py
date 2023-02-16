@@ -252,4 +252,6 @@ if __name__ == '__main__':
     # payload = create_payload(current_config, '89beb98a-69a5-48b0-a938-871bd9e8017b')
     # response = update_config('d35fe72c-f7c3-47ba-abe0-e23dfef4864d', payload)
 
-    # main()
+    input("Press enter to start. INPUT FILE: 'StreamAutomation-Input.json'")
+
+    main()
