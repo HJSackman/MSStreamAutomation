@@ -183,10 +183,20 @@ def main():
         return
 
     try:
-        run(auth=authorization,  new_owner=new_owner_id, video_ids=video_ids)
+        run(auth=authorization, new_owner=new_owner_id, video_ids=video_ids)
     except requests.exceptions.JSONDecodeError as e:
         print(f"ERROR - {e} - this usually indicates that the authorization token is incorrect / outdated")
         logger.error(f"{e} - authorization token is likely incorrect / outdated")
+
+
+def get_id_from_url(url: str) -> str:
+    start = url.rfind('/') + 1
+    end = url.rfind('?')
+    # If '?' is not in the url
+    if end == -1:
+        return url[start:]
+    else:
+        return url[start:end]
 
 
 if __name__ == '__main__':
@@ -199,4 +209,6 @@ if __name__ == '__main__':
     # payload = create_payload(current_config, '89beb98a-69a5-48b0-a938-871bd9e8017b')
     # response = update_config('d35fe72c-f7c3-47ba-abe0-e23dfef4864d', payload)
 
-    main()
+    #main()
+
+
