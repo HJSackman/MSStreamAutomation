@@ -1,7 +1,8 @@
 # Stream Automation
 The automation of assigning video permissions on MS Stream.
 
-Can either assign owner permissions to all videos hosted by an individual, viewable by a group, or a set of specific videos - configured by a json file.
+Can either assign owner permissions to all videos hosted by an individual, viewable by a group, 
+or a set of specific videos - configured by a json file.
 
 ## Input File
 The input json file should be named ***StreamAutomation-Input.json*** and should look like the one of the following. 
@@ -72,7 +73,10 @@ Due to this limitation, skip is used to *skip* over the first `skip` amount of v
 **To process more than 100 videos**, the program will need to be rerun, where `skip` is increased by 100 each time.
 
 ### Authorization
-Unfortunately getting the authorization token does take a little more work.
+Unfortunately getting the authorization token does take a little more work. 
+
+The authorization token does expire after some time so you may need to get a new token between uses of the program.
+The program will give an error if it thinks the token is expired.
 
 - Go to stream in admin mode;
 - Open up 'inspect element' / 'developer tools' - right click and select 'inspect';
@@ -82,3 +86,13 @@ Unfortunately getting the authorization token does take a little more work.
 - Find one that contains a question mark e.g. "events?...", "videos?...";
 - Look through the request headers to find the authorization token;
 - Copy the entire string **including 'Bearer'**.
+
+## Output File
+After the program has completed or crashed, a log file named ***StreamAutomation-Output.log***.
+This file is a log of all the processing the program did. If any errors occurred, they will be detailed in here.
+
+Note: A very common warning is *"Response [400] - User already has permissions"*. This is okay and nothing to
+worry about.
+
+Actual errors will be stated as errors. I recommend you search (ctrl+f) the log for errors after running the
+program to see if the program was successful.
