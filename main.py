@@ -3,6 +3,7 @@ import requests
 from typing import List
 import logging
 from tqdm import tqdm
+import traceback
 
 
 def get_video_ids_from_creator(creator_id: str, top: int, skip: int, auth: str) -> List[str]:
@@ -30,11 +31,12 @@ def get_video_ids_from_creator(creator_id: str, top: int, skip: int, auth: str) 
         "Referer": "https://web.microsoftstream.com/",
         "Referrer-Policy": "strict-origin-when-cross-origin"
     }
-    get_videos_url = f"https://euno-1.api.microsoftstream.com/api/videos?$top={top}&$skip={skip}&$expand=creator,events&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)%20and%20creator%2Fid%20eq%20%{creator_id}%27&adminmode=true&api-version=1.4-private"
-
+    # get_videos_url = f"https://euno-1.api.microsoftstream.com/api/videos?$top={top}&$skip={skip}&$expand=creator,events&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)%20and%20creator%2Fid%20eq%20%{creator_id}%27&adminmode=true&api-version=1.4-private"
+    get_videos_url = f"https://euno-1.api.microsoftstream.com/api/videos?$top={top}&$skip={skip}&$orderby=metrics%2FtrendingScore%20desc&$expand=events&$filter=creator%2Fid%20eq%20%27{creator_id}%27%20and%20published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)&adminmode=true&api-version=1.4-private"
     payload = f"$top={top}&$skip={skip}&$expand=creator,events&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)%20and%20creator%2Fid%20eq%20%{creator_id}%27&adminmode=true&api-version=1.4-private"
 
     response = requests.get(get_videos_url, headers=get_videos_headers, data=payload)
+    print(f"{get_videos_url=}\n\n{payload=}\n\n{response.json()=}")
     json_ = response.json()["value"]
 
     ids = [item['id'] for item in json_]
@@ -45,7 +47,7 @@ def get_video_ids_from_creator(creator_id: str, top: int, skip: int, auth: str) 
 
 
 def get_video_ids_from_group(group_id: str, top: int, skip: int, auth: str) -> List[str]:
-    url = f"ttps://euno-1.api.microsoftstream.com/api/groups/{group_id}/videos?$top={top}&$skip={skip}&$orderby=metrics%2FtrendingScore%20desc&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)&adminmode=true&api-version=1.4-private"
+    url = f"https://euno-1.api.microsoftstream.com/api/groups/{group_id}/videos?$top={top}&$skip={skip}&$orderby=metrics%2FtrendingScore%20desc&$filter=published%20and%20(state%20eq%20%27Completed%27%20or%20contentSource%20eq%20%27livestream%27)&adminmode=true&api-version=1.4-private"
     headers = {
         "accept": "application/json, text/plain, */*",
         "accept-language": "en",
@@ -220,9 +222,15 @@ def main():
         print(f"ERROR - {e} - Input file ('StreamAutomation-Input.json') not found")
         logger.error(f"{e} - Input file ('StreamAutomation-Input.json') not found")
         return
-    except KeyError or ValueError as e:
+    except KeyError as e:
         print(f"ERROR - {e} - Input file is formatted incorrectly")
         logger.error(f"{e} - Input file is formatted incorrectly")
+        traceback.print_exc()
+        return
+    except ValueError as e:
+        print(f"ERROR - {e} - Input file is formatted incorrectly")
+        logger.error(f"{e} - Input file is formatted incorrectly")
+        traceback.print_exc()
         return
 
     try:
